@@ -1,0 +1,12 @@
+[project]
+name = "bksy-twits"
+version = "0.1.0"
+description = "If we get their tweets from bluesky..."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "atproto>=0.0.59",
+    "black>=25.1.0",
+    "easyocr>=1.7.2",
+    "isort>=6.0.1",
+]
