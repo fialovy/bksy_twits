@@ -7,6 +7,8 @@ from easyocr import Reader as ImageReader
 
 REPLIES = "replies"
 RETWEETS = "retweets"
+QUOTES = "quotes"
+BOOKMARKS = "bookmarks"
 LIKES = "likes"
 
 
@@ -49,6 +51,74 @@ class TweetCompiler(ABC):
         if not from_end:
             return word_group_to_index[word_group] < n
         return len(word_group_to_index) - word_group_to_index[word_group] <= n
+
+    def is_probably_their_twix_post(
+        self,
+        extracted_image_texts: list[str],
+        platform_user_full_name: str,
+        platform_user_handle: str,
+        post_characteristics_probability_threshold: Optional[float] = None,
+    ) -> bool:
+        """
+        Optional: if you know the person is on Twitter/X, call this with
+        their name and handle
+
+        Use what we know about person's account screenshot appearance to
+        decide if we have found an image of one of their tweets
+        Seems the bottom matter is more of just icons, so a few less checks to do
+
+        TODO: can consolidate with untruth social? meh
+        """
+        if post_characteristics_probability_threshold is None:
+            post_characteristics_probability_threshold = (
+                self.post_characteristics_probability_threshold
+            )
+        twix_generics = {
+            RETWEETS: QuantifiedPostCharacteristic(regex=".* Reposts?$", found=False),
+            QUOTES: QuantifiedPostCharacteristic(regex=".* Quotes?$", found=False),
+            LIKES: QuantifiedPostCharacteristic(regex=".* Likes?$", found=False),
+            BOOKMARKS: QuantifiedPostCharacteristic(
+                regex=".* Bookmarks?$", found=False
+            ),
+        }
+        word_group_positions = {}
+        for index, word_group in enumerate(extracted_image_texts):
+            # stuff with numbers that needs to be normalized (in giant air quotes)
+            for characteristic_name, characteristic in twix_generics.items():
+                if not characteristic["found"] and re.match(
+                    characteristic["regex"], word_group.strip()
+                ):
+                    word_group_positions[characteristic_name] = index
+                    twix_generics[characteristic_name]["found"] = True
+            # everything else
+            if word_group not in word_group_positions:
+                word_group_positions[word_group] = index
+            # i really don't expect this to happen but i also don't want some later
+            # text than somehow matches an expected intro item to override the index
+            else:
+                word_group_positions[f"{word_group}*"] = index
+
+        probability_points = 0
+        total_points = 0
+        for post_characteristic, position_threshold, from_end in [
+            (platform_user_full_name, self.position_threshold, False),
+            (platform_user_handle, self.position_threshold + 1, False),
+        ]:
+            if self._within_n_positions(
+                post_characteristic,
+                word_group_positions,
+                n=position_threshold,
+                from_end=from_end,
+            ):
+                probability_points += 1
+            total_points += 1
+
+        return (
+            probability_points / total_points
+            >= post_characteristics_probability_threshold
+            if total_points
+            else False
+        )
 
     def is_probably_their_untruth_social_post(
         self,
@@ -179,14 +249,18 @@ class TweetCompiler(ABC):
 
 class TrumpTweetCompiler(TweetCompiler):
     hashtags = ["TrumpTweets"]
-    accounts = ["trumptweets.bsky.social"]
+    accounts = ["trumptweets.bsky.social", "trumpwatch.skyfleet.blue"]
 
     def is_probably_their_tweet(self, extracted_image_texts: list[str]) -> bool:
         return self.is_probably_their_untruth_social_post(
             extracted_image_texts,
             platform_user_full_name="Donald J. Trump",
             platform_user_handle="@realDonaldTrump",
-        )  # or self.is_probably_their_x_post()
+        ) or self.is_probably_their_twix_post(
+            extracted_image_texts,
+            platform_user_full_name="Donald J. Trump",
+            platform_user_handle="@realDonaldTrump",
+        )
 
 
 TWEET_COMPILER_CLASSES = [
