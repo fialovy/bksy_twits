@@ -20,7 +20,9 @@ def main():
     full_tweets_list = []
     for tcc in TWEET_COMPILER_CLASSES:
         tc = tcc(bksy_client)
-        all_tweets = tc.get_all_tweets()
+        full_tweets_list.extend(tc.get_all_tweets())
+
+    import pdb; pdb.set_trace()
 
 
 if __name__ == "__main__":
