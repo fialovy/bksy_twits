@@ -1,6 +1,6 @@
 import re
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, TypedDict, Union, NamedTuple
+from typing import Callable, NamedTuple, Optional, TypedDict, Union
 
 from atproto import Client
 from easyocr import Reader as ImageReader
@@ -27,7 +27,9 @@ class TweetCompiler(ABC):
     max_pages: int = 100
     position_threshold = 5
     ocr_probability_threshold: float = 0.5
-    post_characteristics_probability_threshold: float = 0.45  # r/hmm
+    # if we find at least this proportion of the expected pieces of a screeshot's
+    # appearance, assume we found a post
+    post_characteristics_probability_threshold: float = 0.4
     hashtags: list[str]
     accounts: list[str]
 
@@ -66,12 +68,10 @@ class TweetCompiler(ABC):
         extracted_image_texts: list[str],
         platform_generics: dict[str, QuantifiedPostCharacteristic],
         expected_image_position_infos: list[ExpectedImagePositionInfo],
-        post_characteristics_probability_threshold: Optional[float] = None,
+        probability_threshold: Optional[float] = None,
     ) -> bool:
-        if post_characteristics_probability_threshold is None:
-            post_characteristics_probability_threshold = (
-                self.post_characteristics_probability_threshold
-            )
+        if probability_threshold is None:
+            probability_threshold = self.post_characteristics_probability_threshold
 
         word_group_positions = {}
         for index, word_group in enumerate(extracted_image_texts):
@@ -111,8 +111,7 @@ class TweetCompiler(ABC):
             total_points += 1
 
         return (
-            probability_points / total_points
-            >= post_characteristics_probability_threshold
+            probability_points / total_points >= probability_threshold
             if total_points
             else False
         )
@@ -122,7 +121,6 @@ class TweetCompiler(ABC):
         extracted_image_texts: list[str],
         platform_user_full_name: str,
         platform_user_handle: str,
-        post_characteristics_probability_threshold: Optional[float] = None,
     ) -> bool:
         """
         Optional: if you know the person is on Twitter/X, call this with
@@ -130,14 +128,7 @@ class TweetCompiler(ABC):
 
         Use what we know about person's account screenshot appearance to
         decide if we have found an image of one of their tweets
-        Seems the bottom matter is more of just icons, so a few less checks to do
-
-        TODO: can consolidate with untruth social? meh
         """
-        if post_characteristics_probability_threshold is None:
-            post_characteristics_probability_threshold = (
-                self.post_characteristics_probability_threshold
-            )
         twix_generics = {
             RETWEETS: QuantifiedPostCharacteristic(regex=".* Reposts?$", found=False),
             QUOTES: QuantifiedPostCharacteristic(regex=".* Quotes?$", found=False),
@@ -146,43 +137,45 @@ class TweetCompiler(ABC):
                 regex=".* Bookmarks?$", found=False
             ),
         }
-        word_group_positions = {}
-        for index, word_group in enumerate(extracted_image_texts):
-            # stuff with numbers that needs to be normalized (in giant air quotes)
-            for characteristic_name, characteristic in twix_generics.items():
-                if not characteristic["found"] and re.match(
-                    characteristic["regex"], word_group.strip()
-                ):
-                    word_group_positions[characteristic_name] = index
-                    twix_generics[characteristic_name]["found"] = True
-            # everything else
-            if word_group not in word_group_positions:
-                word_group_positions[word_group] = index
-            # i really don't expect this to happen but i also don't want some later
-            # text than somehow matches an expected intro item to override the index
-            else:
-                word_group_positions[f"{word_group}*"] = index
-
-        probability_points = 0
-        total_points = 0
-        for post_characteristic, position_threshold, from_end in [
-            (platform_user_full_name, self.position_threshold, False),
-            (platform_user_handle, self.position_threshold + 1, False),
-        ]:
-            if self._within_n_positions(
-                post_characteristic,
-                word_group_positions,
-                n=position_threshold,
-                from_end=from_end,
-            ):
-                probability_points += 1
-            total_points += 1
-
-        return (
-            probability_points / total_points
-            >= post_characteristics_probability_threshold
-            if total_points
-            else False
+        twix_expected_image_position_infos = [
+            ExpectedImagePositionInfo(
+                post_characteristic=platform_user_full_name,
+                position_threshold=self.position_threshold,
+                from_end=False,
+            ),
+            ExpectedImagePositionInfo(
+                post_characteristic=platform_user_handle,
+                position_threshold=self.position_threshold + 1,
+                from_end=False,
+            ),
+            # Reposts, quotes, likes, and/or bookmarks seem to appear at bottom
+            # of screenshots if indeed they made it into the crop
+            # DOUBLE CHECK THIS PROBABLY - are they actually separate list items??
+            ExpectedImagePositionInfo(
+                post_characteristic=RETWEETS,
+                position_threshold=self.position_threshold + 3,
+                from_end=True,
+            ),
+            ExpectedImagePositionInfo(
+                post_characteristic=QUOTES,
+                position_threshold=self.position_threshold + 2,
+                from_end=True,
+            ),
+            ExpectedImagePositionInfo(
+                post_characteristic=LIKES,
+                position_threshold=self.position_threshold + 1,
+                from_end=True,
+            ),
+            ExpectedImagePositionInfo(
+                post_characteristic=BOOKMARKS,
+                position_threshold=self.position_threshold,
+                from_end=True,
+            ),
+        ]
+        return self.is_probably_their_platform_post(
+            extracted_image_texts,
+            twix_generics,
+            twix_expected_image_position_infos,
         )
 
     def is_probably_their_untruth_social_post(
@@ -203,7 +196,6 @@ class TweetCompiler(ABC):
             RETWEETS: QuantifiedPostCharacteristic(regex=".* ReTruths?$", found=False),
             LIKES: QuantifiedPostCharacteristic(regex=".* Likes?$", found=False),
         }
-        # characteristic, general index expected in extracted text, whether from end
         untruth_expected_image_position_infos = [
             ExpectedImagePositionInfo(
                 post_characteristic="Truth Details",
@@ -251,6 +243,7 @@ class TweetCompiler(ABC):
                 extracted_texts.append(text)
 
         if self.is_probably_their_tweet(extracted_texts):
+            # OR DO CLEANING HERE
             return " ".join(extracted_texts)
         return None
 
