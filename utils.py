@@ -147,26 +147,19 @@ class TweetCompiler(ABC):
         }
         word_group_positions = {}
         for index, word_group in enumerate(extracted_image_texts):
-            # normalize in air quotes
-            if not untruth_generics[REPLIES]["found"] and re.match(
-                untruth_generics[REPLIES]["regex"], word_group.strip()
-            ):
-                word_group_positions[REPLIES] = index
-                untruth_generics[REPLIES]["found"] = True
-            if not untruth_generics[RETWEETS]["found"] and re.match(
-                untruth_generics[RETWEETS]["regex"], word_group.strip()
-            ):
-                word_group_positions[RETWEETS] = index
-                untruth_generics[RETWEETS]["found"] = True
-            if not untruth_generics[LIKES]["found"] and re.match(
-                untruth_generics[LIKES]["regex"], word_group.strip()
-            ):
-                word_group_positions[LIKES] = index
-                untruth_generics[LIKES]["found"] = True
-            elif word_group not in word_group_positions:
+            # stuff with numbers that needs to be normalized (in giant air quotes)
+            for characteristic_name, characteristic in untruth_generics.items():
+                if not characteristic["found"] and re.match(
+                    characteristic["regex"], word_group.strip()
+                ):
+                    word_group_positions[characteristic_name] = index
+                    untruth_generics[characteristic_name]["found"] = True
+            # everything else
+            if word_group not in word_group_positions:
                 word_group_positions[word_group] = index
+            # i really don't expect this to happen but i also don't want some later
+            # text than somehow matches an expected intro item to override the index
             else:
-                # i really don't expect this to happen but: don't override my intro stuff
                 word_group_positions[f"{word_group}*"] = index
 
         # We think it is probably an Untruth Social post if it has certain introductory
@@ -222,7 +215,7 @@ class TweetCompiler(ABC):
             page_feed = feed_data.feed
 
             for item in page_feed:
-                if item.post and item.post.embed and item.post.embed.images:
+                if item.post and item.post.embed and hasattr(item.post.embed, 'images'):
                     for image in item.post.embed.images:
                         tweet_text = self.get_tweet_text_if_confident(image.fullsize)
                         if tweet_text is not None:
