@@ -1,6 +1,6 @@
 import re
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, TypedDict, Union
+from typing import Callable, Optional, TypedDict, Union, NamedTuple
 
 from atproto import Client
 from easyocr import Reader as ImageReader
@@ -15,6 +15,12 @@ LIKES = "likes"
 class QuantifiedPostCharacteristic(TypedDict):
     regex: str
     found: bool
+
+
+class ExpectedImagePositionInfo(NamedTuple):
+    post_characteristic: str
+    position_threshold: int
+    from_end: bool
 
 
 class TweetCompiler(ABC):
@@ -35,6 +41,9 @@ class TweetCompiler(ABC):
 
     @abstractmethod
     def is_probably_their_tweet(self, extracted_image_texts: list[str]) -> bool:
+        # e.g., call one or both of is_probably_their_twix_post or
+        # is_probably_their_untruth_social_post depending on if the user
+        # has a twitter/X accound or Untruth Social account, respectively
         pass
 
     def _within_n_positions(
@@ -51,6 +60,62 @@ class TweetCompiler(ABC):
         if not from_end:
             return word_group_to_index[word_group] < n
         return len(word_group_to_index) - word_group_to_index[word_group] <= n
+
+    def is_probably_their_platform_post(
+        self,
+        extracted_image_texts: list[str],
+        platform_generics: dict[str, QuantifiedPostCharacteristic],
+        expected_image_position_infos: list[ExpectedImagePositionInfo],
+        post_characteristics_probability_threshold: Optional[float] = None,
+    ) -> bool:
+        if post_characteristics_probability_threshold is None:
+            post_characteristics_probability_threshold = (
+                self.post_characteristics_probability_threshold
+            )
+
+        word_group_positions = {}
+        for index, word_group in enumerate(extracted_image_texts):
+            # stuff with numbers that needs to be normalized (in giant air quotes)
+            for characteristic_name, characteristic in platform_generics.items():
+                if not characteristic["found"] and re.match(
+                    characteristic["regex"], word_group.strip()
+                ):
+                    word_group_positions[characteristic_name] = index
+                    platform_generics[characteristic_name]["found"] = True
+            # everything else
+            if word_group not in word_group_positions:
+                word_group_positions[word_group] = index
+            # i really don't expect this to happen but i also don't want some later
+            # text than somehow matches an expected intro item to override the index
+            else:
+                word_group_positions[f"{word_group}*"] = index
+
+        # We think it is probably a post from the given plaform if it has certain
+        # introductory and/or footer material within the first or last few indexes,
+        # respectively, of the extracted image text list
+        # screenshot crops could vary a lot, so probability threshold should not be too high
+        probability_points = 0
+        total_points = 0
+        for (
+            post_characteristic,
+            position_threshold,
+            from_end,
+        ) in expected_image_position_infos:
+            if self._within_n_positions(
+                post_characteristic,
+                word_group_positions,
+                n=position_threshold,
+                from_end=from_end,
+            ):
+                probability_points += 1
+            total_points += 1
+
+        return (
+            probability_points / total_points
+            >= post_characteristics_probability_threshold
+            if total_points
+            else False
+        )
 
     def is_probably_their_twix_post(
         self,
@@ -125,8 +190,6 @@ class TweetCompiler(ABC):
         extracted_image_texts: list[str],
         platform_user_full_name: str,
         platform_user_handle: str,
-        platform_intro="Truth Details",
-        post_characteristics_probability_threshold: Optional[float] = None,
     ) -> bool:
         """
         Optional: if you know the person is on Untruth Social, call this with
@@ -135,62 +198,49 @@ class TweetCompiler(ABC):
         Use what we know about person's account screenshot appearance to
         decide if we have found an image of one of their Untruth Social posts
         """
-        if post_characteristics_probability_threshold is None:
-            post_characteristics_probability_threshold = (
-                self.post_characteristics_probability_threshold
-            )
-
         untruth_generics = {
             REPLIES: QuantifiedPostCharacteristic(regex=".* repl(y|ies)$", found=False),
             RETWEETS: QuantifiedPostCharacteristic(regex=".* ReTruths?$", found=False),
             LIKES: QuantifiedPostCharacteristic(regex=".* Likes?$", found=False),
         }
-        word_group_positions = {}
-        for index, word_group in enumerate(extracted_image_texts):
-            # stuff with numbers that needs to be normalized (in giant air quotes)
-            for characteristic_name, characteristic in untruth_generics.items():
-                if not characteristic["found"] and re.match(
-                    characteristic["regex"], word_group.strip()
-                ):
-                    word_group_positions[characteristic_name] = index
-                    untruth_generics[characteristic_name]["found"] = True
-            # everything else
-            if word_group not in word_group_positions:
-                word_group_positions[word_group] = index
-            # i really don't expect this to happen but i also don't want some later
-            # text than somehow matches an expected intro item to override the index
-            else:
-                word_group_positions[f"{word_group}*"] = index
-
-        # We think it is probably an Untruth Social post if it has certain introductory
-        # material within the first few indexes of the extracted text
-        # as well as if it has certain footer material, but both are not required
-        # because screenshots vary in crop
-        probability_points = 0
-        total_points = 0
-        for post_characteristic, position_threshold, from_end in [
-            (platform_intro, self.position_threshold, False),
-            (REPLIES, self.position_threshold + 1, False),
-            (platform_user_full_name, self.position_threshold + 2, False),
-            (platform_user_handle, self.position_threshold + 3, False),
+        # characteristic, general index expected in extracted text, whether from end
+        untruth_expected_image_position_infos = [
+            ExpectedImagePositionInfo(
+                post_characteristic="Truth Details",
+                position_threshold=self.position_threshold,
+                from_end=False,
+            ),
+            ExpectedImagePositionInfo(
+                post_characteristic=REPLIES,
+                position_threshold=self.position_threshold + 1,
+                from_end=False,
+            ),
+            ExpectedImagePositionInfo(
+                post_characteristic=platform_user_full_name,
+                position_threshold=self.position_threshold + 2,
+                from_end=False,
+            ),
+            ExpectedImagePositionInfo(
+                post_characteristic=platform_user_handle,
+                position_threshold=self.position_threshold + 3,
+                from_end=False,
+            ),
             # re-untruths and likes are typically near bottom of image as opposed to top
-            (RETWEETS, self.position_threshold + 1, True),
-            (LIKES, self.position_threshold, True),
-        ]:
-            if self._within_n_positions(
-                post_characteristic,
-                word_group_positions,
-                n=position_threshold,
-                from_end=from_end,
-            ):
-                probability_points += 1
-            total_points += 1
-
-        return (
-            probability_points / total_points
-            >= post_characteristics_probability_threshold
-            if total_points
-            else False
+            ExpectedImagePositionInfo(
+                post_characteristic=RETWEETS,
+                position_threshold=self.position_threshold + 1,
+                from_end=True,
+            ),
+            ExpectedImagePositionInfo(
+                post_characteristic=LIKES,
+                position_threshold=self.position_threshold,
+                from_end=True,
+            ),
+        ]
+        return self.is_probably_their_platform_post(
+            extracted_image_texts,
+            untruth_generics,
+            untruth_expected_image_position_infos,
         )
 
     def get_tweet_text_if_confident(self, image_url: str) -> Union[str, None]:
@@ -215,7 +265,7 @@ class TweetCompiler(ABC):
             page_feed = feed_data.feed
 
             for item in page_feed:
-                if item.post and item.post.embed and hasattr(item.post.embed, 'images'):
+                if item.post and item.post.embed and hasattr(item.post.embed, "images"):
                     for image in item.post.embed.images:
                         tweet_text = self.get_tweet_text_if_confident(image.fullsize)
                         if tweet_text is not None:
