@@ -9,4 +9,5 @@ dependencies = [
     "black>=25.1.0",
     "easyocr>=1.7.2",
     "isort>=6.0.1",
+    "mypy>=1.15.0",
 ]
