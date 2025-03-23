@@ -1,14 +1,23 @@
 import re
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, TypedDict, Union
 
 from atproto import Client
 from easyocr import Reader as ImageReader
 
+REPLIES = "replies"
+RETWEETS = "retweets"
+LIKES = "likes"
+
+
+class QuantifiedPostCharacteristic(TypedDict):
+    regex: str
+    found: bool
+
 
 class TweetCompiler(ABC):
     max_pages: int = 100
-    intro_position_threshold = 5
+    position_threshold = 5
     probability_threshold = 0.45  # r/hmm
     hashtags: list[str]
     accounts: list[str]
@@ -25,18 +34,20 @@ class TweetCompiler(ABC):
     def is_probably_their_tweet(self, extracted_image_texts: list[str]) -> bool:
         pass
 
-    def _within_first_n_positions(
+    def _within_n_positions(
         self,
         word_group: str,
         word_group_to_index: dict[str, int],
         n: Optional[int] = None,
+        from_end: bool = False,  # within last n instead of within first n
     ) -> bool:
         if n is None:
-            n = self.intro_position_threshold
-        return (
-            word_group in word_group_to_index
-            and 0 <= word_group_to_index[word_group] < n
-        )
+            n = self.position_threshold
+        if word_group not in word_group_to_index:
+            return False
+        if not from_end:
+            return word_group_to_index[word_group] < n
+        return len(word_group_to_index) - word_group_to_index[word_group] <= n
 
     def is_probably_their_untruth_social_post(
         self,
@@ -56,13 +67,29 @@ class TweetCompiler(ABC):
         if probability_threshold is None:
             probability_threshold = self.probability_threshold
 
+        untruth_generics = {
+            REPLIES: QuantifiedPostCharacteristic(regex=".* repl(y|ies)$", found=False),
+            RETWEETS: QuantifiedPostCharacteristic(regex=".* ReTruths?$", found=False),
+            LIKES: QuantifiedPostCharacteristic(regex=".* Likes?$", found=False),
+        }
         word_group_positions = {}
-        replies_found = False
         for index, word_group in enumerate(extracted_image_texts):
             # normalize in air quotes
-            if not replies_found and re.match("\d+ replies", word_group.strip()):
-                word_group_positions["replies"] = index
-                replies_found = True
+            if not untruth_generics[REPLIES]["found"] and re.match(
+                untruth_generics[REPLIES]["regex"], word_group.strip()
+            ):
+                word_group_positions[REPLIES] = index
+                untruth_generics[REPLIES]["found"] = True
+            if not untruth_generics[RETWEETS]["found"] and re.match(
+                untruth_generics[RETWEETS]["regex"], word_group.strip()
+            ):
+                word_group_positions[RETWEETS] = index
+                untruth_generics[RETWEETS]["found"] = True
+            if not untruth_generics[LIKES]["found"] and re.match(
+                untruth_generics[LIKES]["regex"], word_group.strip()
+            ):
+                word_group_positions[LIKES] = index
+                untruth_generics[LIKES]["found"] = True
             elif word_group not in word_group_positions:
                 word_group_positions[word_group] = index
             else:
@@ -72,50 +99,27 @@ class TweetCompiler(ABC):
         # We think it is probably an Untruth Social post if it has certain introductory
         # material within the first few indexes of the extracted text
         # as well as if it has certain footer material, but both are not required
-        # because screenshots vary
-        # i hate how ugly this is
+        # because screenshots vary in crop
         probability_points = 0
         total_points = 0
-        if self._within_first_n_positions(platform_intro, word_group_positions):
-            probability_points += 1
-            total_points += 1
-        else:
-            total_points += 1
-
-        if self._within_first_n_positions(
-            "replies", word_group_positions, n=self.intro_position_threshold + 1
-        ):
-            probability_points += 1
-            total_points += 1
-        else:
-            total_points += 1
-
-        if self._within_first_n_positions(
-            platform_user_full_name,
-            word_group_positions,
-            n=self.intro_position_threshold + 2,
-        ):
-            probability_points += 1
-            total_points += 1
-        else:
+        for post_characteristic, position_threshold, from_end in [
+            (platform_intro, self.position_threshold, False),
+            (REPLIES, self.position_threshold + 1, False),
+            (platform_user_full_name, self.position_threshold + 2, False),
+            (platform_user_handle, self.position_threshold + 3, False),
+            # re-untruths and likes are typically near bottom of image as opposed to top
+            (RETWEETS, self.position_threshold + 1, True),
+            (LIKES, self.position_threshold, True),
+        ]:
+            if self._within_n_positions(
+                post_characteristic,
+                word_group_positions,
+                n=position_threshold,
+                from_end=from_end,
+            ):
+                probability_points += 1
             total_points += 1
 
-        if self._within_first_n_positions(
-            platform_user_handle,
-            word_group_positions,
-            n=self.intro_position_threshold + 3,
-        ):
-            probability_points += 1
-            total_points += 1
-        else:
-            total_points += 1
-        import pdb; pdb.set_trace() 
-        #11.0k ReTruths 50.2k Likes 3/5/25, 19:07:26 PM 0 Trending'
-        #####################
-        if total_points:
-            prob = probability_points / total_points
-            print(f'DID WE FIND A POST: {prob}')
-        #####################
         return (
             probability_points / total_points >= probability_threshold
             if total_points

@@ -22,7 +22,9 @@ def main():
         tc = tcc(bksy_client)
         full_tweets_list.extend(tc.get_all_tweets())
 
-    import pdb; pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()
 
 
 if __name__ == "__main__":
