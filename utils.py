@@ -55,6 +55,10 @@ class TweetCompiler(ABC):
         n: Optional[int] = None,
         from_end: bool = False,  # within last n instead of within first n
     ) -> bool:
+        """
+        determine if word_group is within n positions from front or back of
+        a list based on pre-computed mapping of word_group to its index in the list
+        """
         if n is None:
             n = self.position_threshold
         if word_group not in word_group_to_index:
