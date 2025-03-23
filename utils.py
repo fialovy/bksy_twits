@@ -18,7 +18,8 @@ class QuantifiedPostCharacteristic(TypedDict):
 class TweetCompiler(ABC):
     max_pages: int = 100
     position_threshold = 5
-    probability_threshold = 0.45  # r/hmm
+    ocr_probability_threshold: float = 0.5
+    post_characteristics_probability_threshold: float = 0.45  # r/hmm
     hashtags: list[str]
     accounts: list[str]
 
@@ -55,7 +56,7 @@ class TweetCompiler(ABC):
         platform_user_full_name: str,
         platform_user_handle: str,
         platform_intro="Truth Details",
-        probability_threshold: Optional[float] = None,
+        post_characteristics_probability_threshold: Optional[float] = None,
     ) -> bool:
         """
         Optional: if you know the person is on Untruth Social, call this with
@@ -64,8 +65,10 @@ class TweetCompiler(ABC):
         Use what we know about person's account screenshot appearance to
         decide if we have found an image of one of their Untruth Social posts
         """
-        if probability_threshold is None:
-            probability_threshold = self.probability_threshold
+        if post_characteristics_probability_threshold is None:
+            post_characteristics_probability_threshold = (
+                self.post_characteristics_probability_threshold
+            )
 
         untruth_generics = {
             REPLIES: QuantifiedPostCharacteristic(regex=".* repl(y|ies)$", found=False),
@@ -121,7 +124,8 @@ class TweetCompiler(ABC):
             total_points += 1
 
         return (
-            probability_points / total_points >= probability_threshold
+            probability_points / total_points
+            >= post_characteristics_probability_threshold
             if total_points
             else False
         )
@@ -130,7 +134,7 @@ class TweetCompiler(ABC):
         extracted_texts = []
         reader_output = self.image_reader.readtext(image_url)
         for _, text, confidence_level in reader_output:
-            if confidence_level >= 0.5:
+            if confidence_level >= self.ocr_probability_threshold:
                 extracted_texts.append(text)
 
         if self.is_probably_their_tweet(extracted_texts):
