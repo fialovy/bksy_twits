@@ -1,5 +1,6 @@
 import re
 from abc import ABC, abstractmethod
+from itertools import chain
 from typing import Callable, NamedTuple, Optional, TypedDict, Union
 
 from atproto import Client
@@ -104,15 +105,9 @@ class TweetCompiler(ABC):
         regex_characteristics_found = {
             name: False for name, info in platform_generics.items() if info.regex
         }
-        import pdb
-
-        pdb.set_trace()
         for index, word_group in enumerate(extracted_image_texts):
             # stuff with numbers that needs to be normalized (in giant air quotes)
             for characteristic_name, characteristic in platform_generics.items():
-                # if not characteristic["found"] and re.match(
-                #    characteristic["regex"], word_group.strip()
-                # ):
                 if (
                     characteristic.regex
                     and not regex_characteristics_found[characteristic_name]
@@ -179,10 +174,22 @@ class TweetCompiler(ABC):
         )
 
     def clean_extracted_texts(self, extracted_texts: list[str]) -> list[str]:
-        import pdb
+        # TODO: clean that weird date decimal thing that appears on top of
+        # untruth social posts
+        # TODO: remove "Trending", numbers, dates, and timestamps
+        cleaned_texts = []
+        for text in extracted_texts:
+            for identifier, info in chain(
+                self.untruth_social_generics.items(), self.twix_generics.items()
+            ):
+                if info.regex:
+                    text = re.sub(info.regex, "", text.strip())
+                else:
+                    text = text.replace(identifier, "")
+            if text:
+                cleaned_texts.append(text)
 
-        pdb.set_trace()
-        return []  # TODO
+        return cleaned_texts
 
     def get_tweet_text_if_confident(self, image_url: str) -> Union[str, None]:
         extracted_texts = []
