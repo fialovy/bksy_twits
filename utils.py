@@ -53,7 +53,6 @@ class TweetCompiler(ABC):
     def get_untruth_social_generics(self) -> dict[str, ExpectedPostCharacteristicInfo]:
         """
         Return empty dict if not on untruth social
-        Yes i will be modifying this in some loop. And yes i am ashamed. 🤪
         """
         pass
 
