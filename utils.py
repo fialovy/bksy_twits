@@ -150,12 +150,7 @@ class TweetCompiler(ABC):
             else False
         )
 
-    def is_probably_their_twix_post(
-        self,
-        extracted_image_texts: list[str],
-        platform_user_full_name: str,
-        platform_user_handle: str,
-    ) -> bool:
+    def is_probably_their_twix_post(self, extracted_image_texts: list[str]) -> bool:
         """
         If you know the person is on Twitter/X, call this with
         their name and handle
@@ -169,10 +164,7 @@ class TweetCompiler(ABC):
         )
 
     def is_probably_their_untruth_social_post(
-        self,
-        extracted_image_texts: list[str],
-        platform_user_full_name: str,
-        platform_user_handle: str,
+        self, extracted_image_texts: list[str]
     ) -> bool:
         """
         If you know the person is on Untruth Social, call this with
@@ -323,12 +315,8 @@ class TrumpTweetCompiler(TweetCompiler):
     def is_probably_their_tweet(self, extracted_image_texts: list[str]) -> bool:
         return self.is_probably_their_untruth_social_post(
             extracted_image_texts,
-            platform_user_full_name=self.untruth_social_user_full_name,
-            platform_user_handle=self.untruth_social_user_handle,
         ) or self.is_probably_their_twix_post(
             extracted_image_texts,
-            platform_user_full_name=self.twix_user_full_name,
-            platform_user_handle=self.twix_user_handle,
         )
 
 
