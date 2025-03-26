@@ -252,7 +252,7 @@ class TweetCompiler(ABC):
         pages_seen = 0
         response_data = client_function(*client_function_args, **client_function_kwargs)
         while pages_seen <= self.max_pages:
-            if hasattr(response_data, 'feed'):
+            if hasattr(response_data, "feed"):
                 response_data = response_data.feed
             else:
                 response_data = response_data.posts
