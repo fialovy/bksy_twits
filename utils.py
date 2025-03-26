@@ -184,7 +184,7 @@ class TweetCompiler(ABC):
                 self.untruth_social_generics.items(), self.twix_generics.items()
             ):
                 if info.regex:
-                    text = re.sub(info.regex, "", text.strip())
+                    text = re.sub(info.regex.rstrip('$'), "", text.strip())
                 else:
                     text = text.replace(identifier, "")
 
