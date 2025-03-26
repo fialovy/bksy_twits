@@ -5,6 +5,7 @@ from typing import Any, Callable, NamedTuple, Optional, Union
 
 from atproto import Client
 from atproto_client.models import AppBskyFeedSearchPosts
+from atproto_client.models.app.bsky.feed.defs import PostView
 from dateutil.parser import ParserError
 from dateutil.parser import parse as attempt_to_parse_date
 from easyocr import Reader as ImageReader
@@ -244,7 +245,8 @@ class TweetCompiler(ABC):
         **client_function_kwargs: Any,
     ) -> list[str]:
         """
-        as long as it understands cursor i guess 🐭
+        as long as it understands cursor i guess 🐭 - edit: okay NO...totally different
+        formats; this was dumb to consolidate
         """
         tweets_list = []
         pages_seen = 0
@@ -255,8 +257,9 @@ class TweetCompiler(ABC):
             else:
                 response_data = response_data.posts
             for item in response_data:
-                if item.post and item.post.embed and hasattr(item.post.embed, "images"):
-                    for image in item.post.embed.images:
+                post = item if isinstance(item, PostView) else item.post
+                if post and post.embed and hasattr(post.embed, "images"):
+                    for image in post.embed.images:
                         tweet_text = self.get_tweet_text_if_confident(image.fullsize)
                         if tweet_text is not None:
                             tweets_list.append(tweet_text)
