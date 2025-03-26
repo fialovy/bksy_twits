@@ -4,6 +4,8 @@ from itertools import chain
 from typing import Callable, NamedTuple, Optional, TypedDict, Union
 
 from atproto import Client
+from dateutil.parser import ParserError
+from dateutil.parser import parse as attempt_to_parse_date
 from easyocr import Reader as ImageReader
 
 REPLIES = "replies"
@@ -185,6 +187,27 @@ class TweetCompiler(ABC):
                     text = re.sub(info.regex, "", text.strip())
                 else:
                     text = text.replace(identifier, "")
+
+            # Attempt to filter out dates, but only try if there is a number
+            if re.search("\d", text):
+                try:
+                    its_just_a_number = float(text)
+                except (ValueError, OverflowError):
+                    pass
+                else:
+                    if its_just_a_number:
+                        continue
+
+                try:
+                    # dateutil is AMAZING but it does not like the AM/PM apparently
+                    maybe_a_date = attempt_to_parse_date(
+                        re.sub("am|pm", "", text.lower())
+                    )
+                except (ParserError, OverflowError):
+                    pass
+                else:
+                    if maybe_a_date:
+                        continue
             if text:
                 cleaned_texts.append(text)
 
