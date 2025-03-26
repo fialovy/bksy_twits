@@ -184,7 +184,7 @@ class TweetCompiler(ABC):
                 self.untruth_social_generics.items(), self.twix_generics.items()
             ):
                 if info.regex:
-                    text = re.sub(info.regex.rstrip('$'), "", text.strip())
+                    text = re.sub(info.regex.rstrip("$"), "", text.strip())
                 else:
                     text = text.replace(identifier, "")
 
@@ -225,12 +225,15 @@ class TweetCompiler(ABC):
             return " ".join(cleaned_extracted_texts)
         return None
 
-    def get_tweets_list_from_hashtag(self) -> list[str]:
+    def get_tweets_list_from_hashtag(self, hashtag: str) -> list[str]:
+        import pdb
+
+        pdb.set_trace()
         return self.get_tweets_list_from_api_call(
             self.client.search_posts, sort="latest", tag=[self.hashtags]
         )
 
-    def get_tweets_list_from_account(self, account) -> list[str]:
+    def get_tweets_list_from_account(self, account: str) -> list[str]:
         return self.get_tweets_list_from_api_call(self.client.get_author_feed, account)
 
     def get_tweets_list_from_api_call(
@@ -268,8 +271,8 @@ class TweetCompiler(ABC):
 
     def get_all_tweets(self) -> list[str]:
         all_tweets = []
-        # for hashtag in self.hashtags:
-        #    all_tweets.extend(self.get_tweets_list_from_hashtag(hashtag))
+        for hashtag in self.hashtags:
+            all_tweets.extend(self.get_tweets_list_from_hashtag(hashtag))
         for account in self.accounts:
             all_tweets.extend(self.get_tweets_list_from_account(account))
         return all_tweets
