@@ -248,11 +248,13 @@ class TweetCompiler(ABC):
         """
         tweets_list = []
         pages_seen = 0
-        feed_data = client_function(*client_function_args, **client_function_kwargs)
+        response_data = client_function(*client_function_args, **client_function_kwargs)
         while pages_seen <= self.max_pages:
-            page_feed = feed_data.feed
-            import pdb; pdb.set_trace()  # LOL NEVER MIND HASHTAG SEARCH NO WORK LIKE THIS 
-            for item in page_feed:
+            if hasattr(response_data, 'feed'):
+                response_data = response_data.feed
+            else:
+                response_data = response_data.posts
+            for item in response_data:
                 if item.post and item.post.embed and hasattr(item.post.embed, "images"):
                     for image in item.post.embed.images:
                         tweet_text = self.get_tweet_text_if_confident(image.fullsize)
@@ -260,9 +262,9 @@ class TweetCompiler(ABC):
                             tweets_list.append(tweet_text)
 
             pages_seen += 1
-            next_page = feed_data.cursor
+            next_page = response_data.cursor
             if next_page:
-                feed_data = client_function(
+                response_data = client_function(
                     *client_function_args, **client_function_kwargs, cursor=next_page
                 )
             else:
