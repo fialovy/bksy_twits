@@ -4,6 +4,7 @@ from itertools import chain
 from typing import Any, Callable, NamedTuple, Optional, Union
 
 from atproto import Client
+from atproto_client.models import AppBskyFeedSearchPosts
 from dateutil.parser import ParserError
 from dateutil.parser import parse as attempt_to_parse_date
 from easyocr import Reader as ImageReader
@@ -226,11 +227,11 @@ class TweetCompiler(ABC):
         return None
 
     def get_tweets_list_from_hashtag(self, hashtag: str) -> list[str]:
-        import pdb
-
-        pdb.set_trace()
         return self.get_tweets_list_from_api_call(
-            self.client.search_posts, sort="latest", tag=[self.hashtags]
+            self.client.app.bsky.feed.search_posts,
+            params=AppBskyFeedSearchPosts.Params(
+                q="*", sort="latest", tag=self.hashtags
+            ),
         )
 
     def get_tweets_list_from_account(self, account: str) -> list[str]:
@@ -250,7 +251,7 @@ class TweetCompiler(ABC):
         feed_data = client_function(*client_function_args, **client_function_kwargs)
         while pages_seen <= self.max_pages:
             page_feed = feed_data.feed
-
+            import pdb; pdb.set_trace()  # LOL NEVER MIND HASHTAG SEARCH NO WORK LIKE THIS 
             for item in page_feed:
                 if item.post and item.post.embed and hasattr(item.post.embed, "images"):
                     for image in item.post.embed.images:
