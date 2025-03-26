@@ -250,12 +250,12 @@ class TweetCompiler(ABC):
         """
         tweets_list = []
         pages_seen = 0
-        response_data = client_function(*client_function_args, **client_function_kwargs)
+        response = client_function(*client_function_args, **client_function_kwargs)
         while pages_seen <= self.max_pages:
-            if hasattr(response_data, "feed"):
-                response_data = response_data.feed
+            if hasattr(response, "feed"):
+                response_data = response.feed
             else:
-                response_data = response_data.posts
+                response_data = response.posts
             for item in response_data:
                 post = item if isinstance(item, PostView) else item.post
                 if post and post.embed and hasattr(post.embed, "images"):
@@ -265,7 +265,7 @@ class TweetCompiler(ABC):
                             tweets_list.append(tweet_text)
 
             pages_seen += 1
-            next_page = response_data.cursor
+            next_page = getattr(response, "cursor", response_data.cursor)
             if next_page:
                 response_data = client_function(
                     *client_function_args, **client_function_kwargs, cursor=next_page
