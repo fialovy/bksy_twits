@@ -1,7 +1,7 @@
 import re
 from abc import ABC, abstractmethod
 from itertools import chain
-from typing import Callable, NamedTuple, Optional, TypedDict, Union
+from typing import Any, Callable, NamedTuple, Optional, Union
 
 from atproto import Client
 from dateutil.parser import ParserError
@@ -175,9 +175,9 @@ class TweetCompiler(ABC):
         )
 
     def clean_extracted_texts(self, extracted_texts: list[str]) -> list[str]:
-        # TODO: clean that weird date decimal thing that appears on top of
-        # untruth social posts
-        # TODO: remove "Trending", numbers, dates, and timestamps
+        # TODO: finish removing "Trending", numbers, dates, and timestamps
+        # stuff like 3/4/25,10:13 AM is sitll common. and i think we will need
+        # to remove the end of string contraints from the regexes :(
         cleaned_texts = []
         for text in extracted_texts:
             for identifier, info in chain(
@@ -226,12 +226,25 @@ class TweetCompiler(ABC):
         return None
 
     def get_tweets_list_from_hashtag(self) -> list[str]:
-        raise NotImplementedError
+        return self.get_tweets_list_from_api_call(
+            self.client.search_posts, sort="latest", tag=[self.hashtags]
+        )
 
     def get_tweets_list_from_account(self, account) -> list[str]:
+        return self.get_tweets_list_from_api_call(self.client.get_author_feed, account)
+
+    def get_tweets_list_from_api_call(
+        self,
+        client_function: Callable,
+        *client_function_args: Any,
+        **client_function_kwargs: Any,
+    ) -> list[str]:
+        """
+        as long as it understands cursor i guess 🐭
+        """
         tweets_list = []
         pages_seen = 0
-        feed_data = self.client.get_author_feed(account)
+        feed_data = client_function(*client_function_args, **client_function_kwargs)
         while pages_seen <= self.max_pages:
             page_feed = feed_data.feed
 
@@ -245,7 +258,9 @@ class TweetCompiler(ABC):
             pages_seen += 1
             next_page = feed_data.cursor
             if next_page:
-                feed_data = self.client.get_author_feed(account, cursor=next_page)
+                feed_data = client_function(
+                    *client_function_args, **client_function_kwargs, cursor=next_page
+                )
             else:
                 break
 
@@ -261,7 +276,7 @@ class TweetCompiler(ABC):
 
 
 class TrumpTweetCompiler(TweetCompiler):
-    hashtags = ["TrumpTweets"]
+    hashtags = ["TrumpTweets", "TrumpTweet"]
     accounts = ["trumptweets.bsky.social", "trumpwatch.skyfleet.blue"]
     twix_user_full_name = "Donald J. Trump"
     twix_user_handle = "@realDonaldTrump"
