@@ -1,5 +1,4 @@
 import re
-from abc import ABC
 from itertools import chain
 from typing import Any, Callable, NamedTuple, Optional, Union
 
@@ -23,7 +22,7 @@ class ExpectedPostCharacteristicInfo(NamedTuple):
     from_end: bool
 
 
-class TweetCompiler(ABC):
+class TweetCompiler:
     max_pages: int = 100
     # Within how many positions in the list of extracted image texts we expect to
     # see a desired piece of text (e.g., person's handle or like count)
@@ -54,6 +53,9 @@ class TweetCompiler(ABC):
         self.twix_generics = self.get_twix_generics()
 
     def get_untruth_social_generics(self) -> dict[str, ExpectedPostCharacteristicInfo]:
+        if not self.untruth_social_user_full_name or not self.untruth_social_user_handle:
+            return {}
+
         return {
             "Truth Details": ExpectedPostCharacteristicInfo(
                 regex=None,
@@ -89,6 +91,8 @@ class TweetCompiler(ABC):
         }
 
     def get_twix_generics(self) -> dict[str, ExpectedPostCharacteristicInfo]:
+        if not self.twix_user_full_name or not self.twix_user_handle:
+            return {}
 
         return {
             self.twix_user_full_name: ExpectedPostCharacteristicInfo(
