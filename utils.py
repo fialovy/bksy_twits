@@ -1,5 +1,5 @@
 import re
-from abc import ABC, abstractmethod
+from abc import ABC
 from itertools import chain
 from typing import Any, Callable, NamedTuple, Optional, Union
 
@@ -53,26 +53,79 @@ class TweetCompiler(ABC):
         self.untruth_social_generics = self.get_untruth_social_generics()
         self.twix_generics = self.get_twix_generics()
 
-    @abstractmethod
     def get_untruth_social_generics(self) -> dict[str, ExpectedPostCharacteristicInfo]:
-        """
-        Return empty dict if not on untruth social
-        """
-        pass
+        return {
+            "Truth Details": ExpectedPostCharacteristicInfo(
+                regex=None,
+                position_threshold=self.position_threshold,
+                from_end=False,
+            ),
+            REPLIES: ExpectedPostCharacteristicInfo(
+                regex=".* repl(y|ies)$",
+                position_threshold=self.position_threshold + 1,
+                from_end=False,
+            ),
+            self.untruth_social_user_full_name: ExpectedPostCharacteristicInfo(
+                regex=None,
+                position_threshold=self.position_threshold + 2,
+                from_end=False,
+            ),
+            self.untruth_social_user_handle: ExpectedPostCharacteristicInfo(
+                regex=None,
+                position_threshold=self.position_threshold + 3,
+                from_end=False,
+            ),
+            RETWEETS: ExpectedPostCharacteristicInfo(
+                regex=".* ReTruths?$",
+                position_threshold=self.position_threshold + 1,
+                # re-untruths and likes are typically near bottom of image as opposed to top
+                from_end=True,
+            ),
+            LIKES: ExpectedPostCharacteristicInfo(
+                regex=".* Likes?$",
+                position_threshold=self.position_threshold,
+                from_end=True,
+            ),
+        }
 
-    @abstractmethod
     def get_twix_generics(self) -> dict[str, ExpectedPostCharacteristicInfo]:
-        """
-        Return empty dict if not on twitter/x
-        """
-        pass
 
-    @abstractmethod
-    def is_probably_their_tweet(self, extracted_image_texts: list[str]) -> bool:
-        # e.g., call one or both of is_probably_their_twix_post or
-        # is_probably_their_untruth_social_post depending on if the user
-        # has a twitter/X accound or Untruth Social account, respectively
-        pass
+        return {
+            self.twix_user_full_name: ExpectedPostCharacteristicInfo(
+                regex=None,
+                position_threshold=self.position_threshold,
+                from_end=False,
+            ),
+            self.twix_user_handle: ExpectedPostCharacteristicInfo(
+                regex=None,
+                position_threshold=self.position_threshold + 1,
+                from_end=False,
+            ),
+            # Reposts, quotes, likes, and/or bookmarks seem to appear at bottom
+            # of screenshots if indeed they made it into the crop
+            # DOUBLE CHECK THIS PROBABLY - are they actually separate list
+            # items when OCR spits them out for us??
+            RETWEETS: ExpectedPostCharacteristicInfo(
+                regex=".* Reposts?$",
+                position_threshold=self.position_threshold + 3,
+                from_end=True,
+            ),
+            QUOTES: ExpectedPostCharacteristicInfo(
+                regex=".* Quotes?$",
+                position_threshold=self.position_threshold + 2,
+                from_end=True,
+            ),
+            LIKES: ExpectedPostCharacteristicInfo(
+                regex=".* Likes?$",
+                position_threshold=self.position_threshold + 1,
+                from_end=True,
+            ),
+            BOOKMARKS: ExpectedPostCharacteristicInfo(
+                regex=".* Bookmarks?$",
+                position_threshold=self.position_threshold,
+                from_end=True,
+            ),
+        }
 
     def _within_n_positions(
         self,
@@ -156,6 +209,9 @@ class TweetCompiler(ABC):
         Use what we know about person's account screenshot appearance to
         decide if we have found an image of one of their tweets
         """
+        if not self.twix_user_full_name or not self.twix_user_handle:
+            return False
+
         return self.is_probably_their_platform_post(
             extracted_image_texts,
             self.twix_generics,
@@ -171,9 +227,19 @@ class TweetCompiler(ABC):
         Use what we know about person's account screenshot appearance to
         decide if we have found an image of one of their Untruth Social posts
         """
+        if not self.untruth_social_user_full_name or not self.untruth_social_user_handle:
+            return False
+
         return self.is_probably_their_platform_post(
             extracted_image_texts,
             self.untruth_social_generics,
+        )
+
+    def is_probably_their_tweet(self, extracted_image_texts: list[str]) -> bool:
+        return self.is_probably_their_untruth_social_post(
+            extracted_image_texts,
+        ) or self.is_probably_their_twix_post(
+            extracted_image_texts,
         )
 
     def clean_extracted_texts(self, extracted_texts: list[str]) -> list[str]:
@@ -291,86 +357,6 @@ class TrumpTweetCompiler(TweetCompiler):
     twix_user_handle = "@realDonaldTrump"
     untruth_social_user_full_name = "Donald J. Trump"
     untruth_social_user_handle = "@realDonaldTrump"
-
-    def get_untruth_social_generics(self) -> dict[str, ExpectedPostCharacteristicInfo]:
-        return {
-            "Truth Details": ExpectedPostCharacteristicInfo(
-                regex=None,
-                position_threshold=self.position_threshold,
-                from_end=False,
-            ),
-            REPLIES: ExpectedPostCharacteristicInfo(
-                regex=".* repl(y|ies)$",
-                position_threshold=self.position_threshold + 1,
-                from_end=False,
-            ),
-            self.untruth_social_user_full_name: ExpectedPostCharacteristicInfo(
-                regex=None,
-                position_threshold=self.position_threshold + 2,
-                from_end=False,
-            ),
-            self.untruth_social_user_handle: ExpectedPostCharacteristicInfo(
-                regex=None,
-                position_threshold=self.position_threshold + 3,
-                from_end=False,
-            ),
-            RETWEETS: ExpectedPostCharacteristicInfo(
-                regex=".* ReTruths?$",
-                position_threshold=self.position_threshold + 1,
-                # re-untruths and likes are typically near bottom of image as opposed to top
-                from_end=True,
-            ),
-            LIKES: ExpectedPostCharacteristicInfo(
-                regex=".* Likes?$",
-                position_threshold=self.position_threshold,
-                from_end=True,
-            ),
-        }
-
-    def get_twix_generics(self) -> dict[str, ExpectedPostCharacteristicInfo]:
-        return {
-            self.twix_user_full_name: ExpectedPostCharacteristicInfo(
-                regex=None,
-                position_threshold=self.position_threshold,
-                from_end=False,
-            ),
-            self.twix_user_handle: ExpectedPostCharacteristicInfo(
-                regex=None,
-                position_threshold=self.position_threshold + 1,
-                from_end=False,
-            ),
-            # Reposts, quotes, likes, and/or bookmarks seem to appear at bottom
-            # of screenshots if indeed they made it into the crop
-            # DOUBLE CHECK THIS PROBABLY - are they actually separate list
-            # items when OCR spits them out for us??
-            RETWEETS: ExpectedPostCharacteristicInfo(
-                regex=".* Reposts?$",
-                position_threshold=self.position_threshold + 3,
-                from_end=True,
-            ),
-            QUOTES: ExpectedPostCharacteristicInfo(
-                regex=".* Quotes?$",
-                position_threshold=self.position_threshold + 2,
-                from_end=True,
-            ),
-            LIKES: ExpectedPostCharacteristicInfo(
-                regex=".* Likes?$",
-                position_threshold=self.position_threshold + 1,
-                from_end=True,
-            ),
-            BOOKMARKS: ExpectedPostCharacteristicInfo(
-                regex=".* Bookmarks?$",
-                position_threshold=self.position_threshold,
-                from_end=True,
-            ),
-        }
-
-    def is_probably_their_tweet(self, extracted_image_texts: list[str]) -> bool:
-        return self.is_probably_their_untruth_social_post(
-            extracted_image_texts,
-        ) or self.is_probably_their_twix_post(
-            extracted_image_texts,
-        )
 
 
 TWEET_COMPILER_CLASSES = [
