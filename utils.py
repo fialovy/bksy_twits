@@ -30,7 +30,7 @@ class TweetCompiler:
     ocr_probability_threshold: float = 0.5
     # if we find at least this proportion of the expected pieces of a screeshot's
     # appearance, assume we found a post
-    post_characteristics_probability_threshold: float = 0.4
+    post_characteristics_probability_threshold: float = 0.25
 
     # For searching Bluesky
     hashtags: list[str]
@@ -366,8 +366,8 @@ class TweetCompiler:
         all_tweets = []
         for hashtag in self.hashtags:
             all_tweets.extend(self.get_tweets_list_from_hashtag(hashtag))
-        # for account in self.accounts:
-        #    all_tweets.extend(self.get_tweets_list_from_account(account))
+        for account in self.accounts:
+            all_tweets.extend(self.get_tweets_list_from_account(account))
         return all_tweets
 
 
