@@ -372,7 +372,7 @@ class TweetCompiler:
 
 
 class TrumpTweetCompiler(TweetCompiler):
-    hashtags = ["TrumpTweets", "TrumpTweet"]
+    hashtags = ["TrumpTweets", "TrumpTweet", "trumptweets", "trumptweet", "TheresAlwaysATweet"]
     accounts = ["trumptweets.bsky.social", "trumpwatch.skyfleet.blue"]
     twix_user_full_name = "Donald J. Trump"
     twix_user_handle = "@realDonaldTrump"
