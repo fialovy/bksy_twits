@@ -1,10 +1,9 @@
 import re
 from itertools import chain
-from typing import Any, Callable, NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Optional, Union
 
 from atproto import Client
 from atproto_client.models import AppBskyFeedSearchPosts
-from atproto_client.models.app.bsky.feed.defs import PostView
 from dateutil.parser import ParserError
 from dateutil.parser import parse as attempt_to_parse_date
 from easyocr import Reader as ImageReader
@@ -53,7 +52,10 @@ class TweetCompiler:
         self.twix_generics = self.get_twix_generics()
 
     def get_untruth_social_generics(self) -> dict[str, ExpectedPostCharacteristicInfo]:
-        if not self.untruth_social_user_full_name or not self.untruth_social_user_handle:
+        if (
+            not self.untruth_social_user_full_name
+            or not self.untruth_social_user_handle
+        ):
             return {}
 
         return {
@@ -63,7 +65,7 @@ class TweetCompiler:
                 from_end=False,
             ),
             REPLIES: ExpectedPostCharacteristicInfo(
-                regex=".* repl(y|ies)$",
+                regex=".* (r|R)epl(y|ies)$",
                 position_threshold=self.position_threshold + 1,
                 from_end=False,
             ),
@@ -84,7 +86,7 @@ class TweetCompiler:
                 from_end=True,
             ),
             LIKES: ExpectedPostCharacteristicInfo(
-                regex=".* Likes?$",
+                regex=".* (l|L)ikes?$",
                 position_threshold=self.position_threshold,
                 from_end=True,
             ),
@@ -231,7 +233,10 @@ class TweetCompiler:
         Use what we know about person's account screenshot appearance to
         decide if we have found an image of one of their Untruth Social posts
         """
-        if not self.untruth_social_user_full_name or not self.untruth_social_user_handle:
+        if (
+            not self.untruth_social_user_full_name
+            or not self.untruth_social_user_handle
+        ):
             return False
 
         return self.is_probably_their_platform_post(
@@ -248,8 +253,7 @@ class TweetCompiler:
 
     def clean_extracted_texts(self, extracted_texts: list[str]) -> list[str]:
         # TODO: finish removing "Trending", numbers, dates, and timestamps
-        # stuff like 3/4/25,10:13 AM is sitll common. and i think we will need
-        # to remove the end of string contraints from the regexes :(
+        # stuff like 3/4/25,10:13 AM is still common
         cleaned_texts = []
         for text in extracted_texts:
             for identifier, info in chain(
@@ -297,37 +301,46 @@ class TweetCompiler:
             return " ".join(cleaned_extracted_texts)
         return None
 
-    def get_tweets_list_from_hashtag(self, hashtag: str) -> list[str]:
-        return self.get_tweets_list_from_api_call(
-            self.client.app.bsky.feed.search_posts,
-            params=AppBskyFeedSearchPosts.Params(
-                q="*", sort="latest", tag=self.hashtags
-            ),
-        )
-
     def get_tweets_list_from_account(self, account: str) -> list[str]:
-        return self.get_tweets_list_from_api_call(self.client.get_author_feed, account)
+        tweets_list = []
+        pages_seen = 0
+        response = self.client.get_author_feed(account)
+        while pages_seen <= self.max_pages:
+            for item in response.feed:
+                if item.post and item.post.embed and hasattr(item.post.embed, "images"):
+                    for image in item.post.embed.images:
+                        tweet_text = self.get_tweet_text_if_confident(image.fullsize)
+                        if tweet_text is not None:
+                            tweets_list.append(tweet_text)
 
-    def get_tweets_list_from_api_call(
-        self,
-        client_function: Callable,
-        *client_function_args: Any,
-        **client_function_kwargs: Any,
-    ) -> list[str]:
+            pages_seen += 1
+            next_page = response.cursor
+            if next_page:
+                response = self.client.get_author_feed(account, cursor=next_page)
+            else:
+                break
+
+        return tweets_list
+
+    def get_tweets_list_from_hashtag(self, hashtag: str) -> list[str]:
         """
-        as long as it understands cursor i guess 🐭 - edit: okay NO...totally different
-        formats; this was dumb to consolidate
+        I promise I tried to make them share but the response structure was
+        so infuriatingly, subtly different >:(
+
+        ...but now that i look at it i really oughta try again...
         """
         tweets_list = []
         pages_seen = 0
-        response = client_function(*client_function_args, **client_function_kwargs)
+        # There is a tag parameter but it does not seem to work:
+        # https://www.reddit.com/r/BlueskySocial/comments/1h00922/trying_to_query_api_programmatically_cant_search/
+        response = self.client.app.bsky.feed.search_posts(
+            params=AppBskyFeedSearchPosts.Params(
+                q=f"#{hashtag}",
+                sort="latest",
+            ),
+        )
         while pages_seen <= self.max_pages:
-            if hasattr(response, "feed"):
-                response_data = response.feed
-            else:
-                response_data = response.posts
-            for item in response_data:
-                post = item if isinstance(item, PostView) else item.post
+            for post in response.posts:
                 if post and post.embed and hasattr(post.embed, "images"):
                     for image in post.embed.images:
                         tweet_text = self.get_tweet_text_if_confident(image.fullsize)
@@ -335,10 +348,14 @@ class TweetCompiler:
                             tweets_list.append(tweet_text)
 
             pages_seen += 1
-            next_page = getattr(response, "cursor", response_data.cursor)
+            next_page = response.cursor
             if next_page:
-                response_data = client_function(
-                    *client_function_args, **client_function_kwargs, cursor=next_page
+                response = self.client.app.bsky.feed.search_posts(
+                    params=AppBskyFeedSearchPosts.Params(
+                        q=f"#{hashtag}",
+                        sort="latest",
+                        cursor=next_page,
+                    ),
                 )
             else:
                 break
@@ -349,8 +366,8 @@ class TweetCompiler:
         all_tweets = []
         for hashtag in self.hashtags:
             all_tweets.extend(self.get_tweets_list_from_hashtag(hashtag))
-        for account in self.accounts:
-            all_tweets.extend(self.get_tweets_list_from_account(account))
+        # for account in self.accounts:
+        #    all_tweets.extend(self.get_tweets_list_from_account(account))
         return all_tweets
 
 
