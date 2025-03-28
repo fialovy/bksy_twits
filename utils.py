@@ -1,6 +1,7 @@
 import re
 from itertools import chain
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, Callable, NamedTuple, Optional, Union
+from urllib.error import HTTPError
 
 from atproto import Client
 from atproto_client.models import AppBskyFeedSearchPosts
@@ -291,7 +292,11 @@ class TweetCompiler:
 
     def get_tweet_text_if_confident(self, image_url: str) -> Union[str, None]:
         extracted_texts = []
-        reader_output = self.image_reader.readtext(image_url)
+        try:
+            reader_output = self.image_reader.readtext(image_url)
+        except HTTPError:
+            return None
+
         for _, text, confidence_level in reader_output:
             if confidence_level >= self.ocr_probability_threshold:
                 extracted_texts.append(text)
@@ -301,7 +306,65 @@ class TweetCompiler:
             return " ".join(cleaned_extracted_texts)
         return None
 
+    def _get_tweets_list_from_api_call(
+        self, getter_func: Callable, *getter_args, **getter_kwargs
+    ) -> list[str]:
+        response = getter_func(*getter_args, **getter_kwargs)
+        feed_response = getattr(response, "feed", None)
+        posts_response = getattr(response, "posts", None)
+        if feed_response:
+            items = feed_response
+            post_attr = "post"
+            cursor_in_params = False
+        elif posts_response:
+            items = posts_response
+            # each thing we itereate is already a post
+            # I want to use None but it makes mypy yell so something here, have
+            # something falsy that won't make mypy yell 😣:
+            post_attr = ""
+            cursor_in_params = True
+        else:
+            raise ValueError(f"Unkown API response format: response ({type(response)})")
+
+        tweets_list = []
+        pages_seen = 0
+        while pages_seen <= self.max_pages:
+            for item in items:  # for post in response.posts
+                post = getattr(item, post_attr) if post_attr else item
+                if post and post.embed and hasattr(post.embed, "images"):
+                    for image in post.embed.images:
+                        tweet_text = self.get_tweet_text_if_confident(image.fullsize)
+                        if tweet_text is not None:
+                            tweets_list.append(tweet_text)
+
+            pages_seen += 1
+            next_page = response.cursor
+            if next_page:
+                if cursor_in_params:
+                    getter_kwargs["params"].cursor = next_page
+                else:
+                    getter_kwargs["cursor"] = next_page
+                response = getter_func(*getter_args, **getter_kwargs)
+            else:
+                break
+
+        return tweets_list
+
     def get_tweets_list_from_account(self, account: str) -> list[str]:
+        return self._get_tweets_list_from_api_call(self.client.get_author_feed, account)
+
+    def get_tweets_list_from_hashtag(self, hashtag: str) -> list[str]:
+        # There is a tag parameter but it does not seem to work:
+        # https://www.reddit.com/r/BlueskySocial/comments/1h00922/trying_to_query_api_programmatically_cant_search/
+        return self._get_tweets_list_from_api_call(
+            self.client.app.bsky.feed.search_posts,
+            params=AppBskyFeedSearchPosts.Params(
+                q=f"#{hashtag}",
+                sort="latest",
+            ),
+        )
+
+    def OLD_get_tweets_list_from_account(self, account: str) -> list[str]:
         tweets_list = []
         pages_seen = 0
         response = self.client.get_author_feed(account)
@@ -322,7 +385,7 @@ class TweetCompiler:
 
         return tweets_list
 
-    def get_tweets_list_from_hashtag(self, hashtag: str) -> list[str]:
+    def OLD_get_tweets_list_from_hashtag(self, hashtag: str) -> list[str]:
         """
         I promise I tried to make them share but the response structure was
         so infuriatingly, subtly different >:(
@@ -372,7 +435,13 @@ class TweetCompiler:
 
 
 class TrumpTweetCompiler(TweetCompiler):
-    hashtags = ["TrumpTweets", "TrumpTweet", "trumptweets", "trumptweet", "TheresAlwaysATweet"]
+    hashtags = [
+        "TrumpTweets",
+        "TrumpTweet",
+        "trumptweets",
+        "trumptweet",
+        "TheresAlwaysATweet",
+    ]
     accounts = ["trumptweets.bsky.social", "trumpwatch.skyfleet.blue"]
     twix_user_full_name = "Donald J. Trump"
     twix_user_handle = "@realDonaldTrump"
