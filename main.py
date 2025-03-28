@@ -1,8 +1,10 @@
 import os
 
+import markovify
 from atproto import Client
 
-from utils import TWEET_COMPILER_CLASSES
+from utils import (MARKOVIFY_MAX_TRIES, MARKOVIFY_STATE_SIZE,
+                   TWEET_COMPILER_CLASSES)
 
 
 def main():
@@ -22,9 +24,10 @@ def main():
         tc = tcc(bksy_client)
         full_tweets_list.extend(tc.get_all_tweets())
 
-    import pdb
-
-    pdb.set_trace()
+    # TODO: filter similar list items that are really just the same screenshot
+    corpus = " ".join(full_tweets_list)
+    markovifier = markovify.Text(corpus, state_size=MARKOVIFY_STATE_SIZE)
+    sentence = markovifier.make_sentence(tries=MARKOVIFY_MAX_TRIES)
 
 
 if __name__ == "__main__":

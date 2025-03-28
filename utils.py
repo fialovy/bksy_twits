@@ -22,6 +22,11 @@ OTHER_REGEXES_TO_CLEAN = frozenset(
     ]
 )
 
+MARKOVIFY_STATE_SIZE = (
+    2  # this is the default and sadly any more isn't giving me anything yet
+)
+MARKOVIFY_MAX_TRIES = 100
+
 
 class ExpectedPostCharacteristicInfo(NamedTuple):
     regex: Optional[str]
