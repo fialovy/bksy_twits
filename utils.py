@@ -364,67 +364,6 @@ class TweetCompiler:
             ),
         )
 
-    def OLD_get_tweets_list_from_account(self, account: str) -> list[str]:
-        tweets_list = []
-        pages_seen = 0
-        response = self.client.get_author_feed(account)
-        while pages_seen <= self.max_pages:
-            for item in response.feed:
-                if item.post and item.post.embed and hasattr(item.post.embed, "images"):
-                    for image in item.post.embed.images:
-                        tweet_text = self.get_tweet_text_if_confident(image.fullsize)
-                        if tweet_text is not None:
-                            tweets_list.append(tweet_text)
-
-            pages_seen += 1
-            next_page = response.cursor
-            if next_page:
-                response = self.client.get_author_feed(account, cursor=next_page)
-            else:
-                break
-
-        return tweets_list
-
-    def OLD_get_tweets_list_from_hashtag(self, hashtag: str) -> list[str]:
-        """
-        I promise I tried to make them share but the response structure was
-        so infuriatingly, subtly different >:(
-
-        ...but now that i look at it i really oughta try again...
-        """
-        tweets_list = []
-        pages_seen = 0
-        # There is a tag parameter but it does not seem to work:
-        # https://www.reddit.com/r/BlueskySocial/comments/1h00922/trying_to_query_api_programmatically_cant_search/
-        response = self.client.app.bsky.feed.search_posts(
-            params=AppBskyFeedSearchPosts.Params(
-                q=f"#{hashtag}",
-                sort="latest",
-            ),
-        )
-        while pages_seen <= self.max_pages:
-            for post in response.posts:
-                if post and post.embed and hasattr(post.embed, "images"):
-                    for image in post.embed.images:
-                        tweet_text = self.get_tweet_text_if_confident(image.fullsize)
-                        if tweet_text is not None:
-                            tweets_list.append(tweet_text)
-
-            pages_seen += 1
-            next_page = response.cursor
-            if next_page:
-                response = self.client.app.bsky.feed.search_posts(
-                    params=AppBskyFeedSearchPosts.Params(
-                        q=f"#{hashtag}",
-                        sort="latest",
-                        cursor=next_page,
-                    ),
-                )
-            else:
-                break
-
-        return tweets_list
-
     def get_all_tweets(self) -> list[str]:
         all_tweets = []
         for hashtag in self.hashtags:
