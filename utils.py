@@ -15,6 +15,13 @@ QUOTES = "quotes"
 BOOKMARKS = "bookmarks"
 LIKES = "likes"
 
+OTHER_REGEXES_TO_CLEAN = frozenset(
+    [
+        r"Twitter for [a-zA-Z]+",
+        r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4}\s*,?\s*\d{1,2}:\d{2}\s*(?:AM|PM)\b",
+    ]
+)
+
 
 class ExpectedPostCharacteristicInfo(NamedTuple):
     regex: Optional[str]
@@ -285,6 +292,10 @@ class TweetCompiler:
                 else:
                     if maybe_a_date:
                         continue
+
+            for other_regex in OTHER_REGEXES_TO_CLEAN:
+                re.sub(other_regex, "", text)
+
             if text:
                 cleaned_texts.append(text)
 
