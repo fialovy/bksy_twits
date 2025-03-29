@@ -64,6 +64,7 @@ dependencies = [
     { name = "atproto" },
     { name = "black" },
     { name = "easyocr" },
+    { name = "fuzzywuzzy" },
     { name = "isort" },
     { name = "markovify" },
     { name = "mypy" },
@@ -76,6 +77,7 @@ requires-dist = [
     { name = "atproto", specifier = ">=0.0.59" },
     { name = "black", specifier = ">=25.1.0" },
     { name = "easyocr", specifier = ">=1.7.2" },
+    { name = "fuzzywuzzy", specifier = ">=0.18.0" },
     { name = "isort", specifier = ">=6.0.1" },
     { name = "markovify", specifier = ">=0.9.4" },
     { name = "mypy", specifier = ">=1.15.0" },
@@ -305,6 +307,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/34/f4/5721faf47b8c499e776bc34c6a8fc17efdf7fdef0b00f398128bc5dcb4ac/fsspec-2025.3.0.tar.gz", hash = "sha256:a935fd1ea872591f2b5148907d103488fc523295e6c64b835cfad8c3eca44972", size = 298491 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/56/53/eb690efa8513166adef3e0669afd31e95ffde69fb3c52ec2ac7223ed6018/fsspec-2025.3.0-py3-none-any.whl", hash = "sha256:efb87af3efa9103f94ca91a7f8cb7a4df91af9f74fc106c9c7ea0efd7277c1b3", size = 193615 },
+]
+
+[[package]]
+name = "fuzzywuzzy"
+version = "0.18.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/11/4b/0a002eea91be6048a2b5d53c5f1b4dafd57ba2e36eea961d05086d7c28ce/fuzzywuzzy-0.18.0.tar.gz", hash = "sha256:45016e92264780e58972dca1b3d939ac864b78437422beecebb3095f8efd00e8", size = 28888 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/ff/74f23998ad2f93b945c0309f825be92e04e0348e062026998b5eefef4c33/fuzzywuzzy-0.18.0-py2.py3-none-any.whl", hash = "sha256:928244b28db720d1e0ee7587acf660ea49d7e4c632569cad4f1cd7e68a5f0993", size = 18272 },
 ]
 
 [[package]]

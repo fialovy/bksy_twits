@@ -1,5 +1,6 @@
 import random
 import re
+from fuzzywuzzy import fuzz
 from itertools import chain
 from typing import Any, Callable, NamedTuple, Optional, Union
 from urllib.error import HTTPError
@@ -25,14 +26,15 @@ OTHER_REGEXES_TO_CLEAN = frozenset(
     ]
 )
 
-
 DEFAULT_VILLAIN_QUOTES_COUNT = 5
+MY_DUMB_INFINITE_LOOP_PREVENTER = 1000
+QUOTE_INSERTION_WINDOW_SIZE = 5
+TWEET_DEDUPE_FUZZY_MATCH_THRESHOLD = 80
+
 MARKOVIFY_STATE_SIZE = (
     2  # this is the default and sadly any more isn't giving me anything yet
 )
 MARKOVIFY_MAX_TRIES = 100
-MY_DUMB_INFINITE_LOOP_PREVENTER = 1000
-QUOTE_INSERTION_WINDOW_SIZE = 5
 
 
 class ExpectedPostCharacteristicInfo(NamedTuple):
@@ -416,10 +418,24 @@ TWEET_COMPILER_CLASSES = [
 ]
 
 
-def get_villain_quotes_list(count: int = DEFAULT_VILLAIN_QUOTES_COUNT) -> list[str]:
+def dedupe_combined_tweets_list(combined_tweets_list: list[str]) -> list[str]:
+    deduped_tweets_list: list[str] = []
+    for tweet in combined_tweets_list:
+        is_duplicate = False
+        for deduped in deduped_tweets_list:
+            if fuzz.ratio(tweet, deduped) >= TWEET_DEDUPE_FUZZY_MATCH_THRESHOLD:
+                is_duplicate = True
+                break
+        if not is_duplicate:
+            deduped_tweets_list.append(tweet)
+
+    return deduped_tweets_list
+
+
+def get_villain_quotes_list(max_count: int) -> list[str]:
     # The dict keys were just for reference in case anyone was curious :P
     all_quotes = [quote for quotes in VILLAIN_QUOTES.values() for quote in quotes]
-    return random.sample(all_quotes, DEFAULT_VILLAIN_QUOTES_COUNT)
+    return random.sample(all_quotes, min([len(all_quotes), max_count]))
 
 
 def create_combined_corpus(

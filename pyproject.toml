@@ -8,6 +8,7 @@ dependencies = [
     "atproto>=0.0.59",
     "black>=25.1.0",
     "easyocr>=1.7.2",
+    "fuzzywuzzy>=0.18.0",
     "isort>=6.0.1",
     "markovify>=0.9.4",
     "mypy>=1.15.0",

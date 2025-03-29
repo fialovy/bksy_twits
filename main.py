@@ -9,6 +9,7 @@ from utils import (
     TWEET_COMPILER_CLASSES,
     create_combined_corpus,
     get_villain_quotes_list,
+    dedupe_combined_tweets_list,
 )
 
 
@@ -29,11 +30,10 @@ def main():
         tc = tcc(bksy_client)
         full_tweets_list.extend(tc.get_all_tweets())
 
-    # TODO: possibly filter similar list items that are really just the same screenshot
-    # Buuuut, I believe markovify ignores repeated stuff anyway, so ¯\_(ツ)_/¯
-    villain_quotes_list = get_villain_quotes_list()
+    full_tweets_list = dedupe_combined_tweets_list(full_tweets_list)
+    villain_quotes_list = get_villain_quotes_list(max_count=len(full_tweets_list))
     corpus = create_combined_corpus(full_tweets_list, villain_quotes_list)
-
+    import pdb; pdb.set_trace() 
     markovifier = markovify.Text(corpus, state_size=MARKOVIFY_STATE_SIZE)
     satisfied = False
     while not satisfied:
