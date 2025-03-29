@@ -28,9 +28,7 @@ def main():
     full_tweets_list = dedupe_combined_tweets_list(full_tweets_list)
     villain_quotes_list = get_villain_quotes_list(max_count=len(full_tweets_list))
     corpus = create_combined_corpus(full_tweets_list, villain_quotes_list)
-    import pdb
 
-    pdb.set_trace()
     markovifier = markovify.Text(corpus, state_size=MARKOVIFY_STATE_SIZE)
     satisfied = False
     while not satisfied:
@@ -39,7 +37,7 @@ def main():
         if decision.lower() in ["y", "yes"]:
             satisfied = True
 
-    # POST IT:
+    # POST IT: - todo..
 
 
 if __name__ == "__main__":
