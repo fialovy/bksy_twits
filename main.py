@@ -37,7 +37,7 @@ def main():
         if decision.lower() in ["y", "yes"]:
             satisfied = True
 
-    # POST IT: - todo..
+    bksy_client.send_post(sentence)
 
 
 if __name__ == "__main__":
