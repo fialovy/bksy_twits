@@ -1,9 +1,15 @@
 import os
+
 import markovify
 from atproto import Client
 
-from utils import (MARKOVIFY_MAX_TRIES, MARKOVIFY_STATE_SIZE,
-                   TWEET_COMPILER_CLASSES, get_villain_quotes_list)
+from utils import (
+    MARKOVIFY_MAX_TRIES,
+    MARKOVIFY_STATE_SIZE,
+    TWEET_COMPILER_CLASSES,
+    create_combined_corpus,
+    get_villain_quotes_list,
+)
 
 
 def main():

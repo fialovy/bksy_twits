@@ -31,6 +31,8 @@ MARKOVIFY_STATE_SIZE = (
     2  # this is the default and sadly any more isn't giving me anything yet
 )
 MARKOVIFY_MAX_TRIES = 100
+MY_DUMB_INFINITE_LOOP_PREVENTER = 1000
+QUOTE_INSERTION_WINDOW_SIZE = 5
 
 
 class ExpectedPostCharacteristicInfo(NamedTuple):
@@ -425,6 +427,34 @@ def create_combined_corpus(
 ) -> str:
     """
     Intersperse villain quotes at random places in tweets list then combine into
-    single string corpus
+    single string corpus. Same idea as different_from_me_should repo.
     """
-    raise NotImplementedError
+    num_tweets = len(full_tweets_list)
+    seen_neighbor_indices = set()
+    there_just_isnt_enough = 0
+    for quote in villain_quotes_list:
+        index_to_insert_at = random.randrange(num_tweets)
+        while (
+            index_to_insert_at in seen_neighbor_indices
+            and there_just_isnt_enough < MY_DUMB_INFINITE_LOOP_PREVENTER
+        ):
+            there_just_isnt_enough += 1
+            index_to_insert_at = random.randrange(num_tweets)
+        # We don't want the quotes to end up too close together, so make a
+        # decent range of indices around the current insert point become
+        # off-limits. The negatives shouldn't do any harm here.
+        seen_neighbor_indices.update(
+            [
+                *range(
+                    index_to_insert_at - QUOTE_INSERTION_WINDOW_SIZE,
+                    index_to_insert_at,
+                ),
+                *range(
+                    index_to_insert_at,
+                    index_to_insert_at + QUOTE_INSERTION_WINDOW_SIZE,
+                ),
+            ]
+        )
+        full_tweets_list.insert(index_to_insert_at, quote)
+
+    return " ".join(full_tweets_list)
