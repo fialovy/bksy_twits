@@ -1,6 +1,5 @@
 import random
 import re
-from fuzzywuzzy import fuzz
 from itertools import chain
 from typing import Any, Callable, NamedTuple, Optional, Union
 from urllib.error import HTTPError
@@ -10,6 +9,7 @@ from atproto_client.models import AppBskyFeedSearchPosts
 from dateutil.parser import ParserError
 from dateutil.parser import parse as attempt_to_parse_date
 from easyocr import Reader as ImageReader
+from fuzzywuzzy import fuzz
 
 from villain_quotes import VILLAIN_QUOTES
 
@@ -26,7 +26,6 @@ OTHER_REGEXES_TO_CLEAN = frozenset(
     ]
 )
 
-DEFAULT_VILLAIN_QUOTES_COUNT = 5
 MY_DUMB_INFINITE_LOOP_PREVENTER = 1000
 QUOTE_INSERTION_WINDOW_SIZE = 5
 TWEET_DEDUPE_FUZZY_MATCH_THRESHOLD = 80

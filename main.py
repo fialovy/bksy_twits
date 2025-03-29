@@ -3,14 +3,9 @@ import os
 import markovify
 from atproto import Client
 
-from utils import (
-    MARKOVIFY_MAX_TRIES,
-    MARKOVIFY_STATE_SIZE,
-    TWEET_COMPILER_CLASSES,
-    create_combined_corpus,
-    get_villain_quotes_list,
-    dedupe_combined_tweets_list,
-)
+from utils import (MARKOVIFY_MAX_TRIES, MARKOVIFY_STATE_SIZE,
+                   TWEET_COMPILER_CLASSES, create_combined_corpus,
+                   dedupe_combined_tweets_list, get_villain_quotes_list)
 
 
 def main():
@@ -33,7 +28,9 @@ def main():
     full_tweets_list = dedupe_combined_tweets_list(full_tweets_list)
     villain_quotes_list = get_villain_quotes_list(max_count=len(full_tweets_list))
     corpus = create_combined_corpus(full_tweets_list, villain_quotes_list)
-    import pdb; pdb.set_trace() 
+    import pdb
+
+    pdb.set_trace()
     markovifier = markovify.Text(corpus, state_size=MARKOVIFY_STATE_SIZE)
     satisfied = False
     while not satisfied:
