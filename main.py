@@ -32,13 +32,17 @@ def main():
 
     full_tweets_list = dedupe_combined_tweets_list(full_tweets_list)
     villain_quotes_list = get_villain_quotes_list(max_count=len(full_tweets_list))
-    corpus = create_combined_corpus(full_tweets_list, villain_quotes_list)
 
-    markovifier = markovify.Text(corpus, state_size=MARKOVIFY_STATE_SIZE)
     satisfied = False
     while not satisfied:
+        # recreate corpus to vary the villain quotes
+        corpus = create_combined_corpus(full_tweets_list, villain_quotes_list)
+        markovifier = markovify.Text(corpus, state_size=MARKOVIFY_STATE_SIZE)
+
         sentence = markovifier.make_sentence(tries=MARKOVIFY_MAX_TRIES)
-        decision = input(f"Post this quote? : {sentence} (Y to post / N to try again)")
+        decision = input(
+            f"\nPost this quote? : {sentence}\n(Y to post / N to try again)\n"
+        )
         if decision.lower() in ["y", "yes"]:
             satisfied = True
 
