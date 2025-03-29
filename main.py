@@ -3,9 +3,14 @@ import os
 import markovify
 from atproto import Client
 
-from utils import (MARKOVIFY_MAX_TRIES, MARKOVIFY_STATE_SIZE,
-                   TWEET_COMPILER_CLASSES, create_combined_corpus,
-                   dedupe_combined_tweets_list, get_villain_quotes_list)
+from utils import (
+    MARKOVIFY_MAX_TRIES,
+    MARKOVIFY_STATE_SIZE,
+    TWEET_COMPILER_CLASSES,
+    create_combined_corpus,
+    dedupe_combined_tweets_list,
+    get_villain_quotes_list,
+)
 
 
 def main():
@@ -37,7 +42,7 @@ def main():
         if decision.lower() in ["y", "yes"]:
             satisfied = True
 
-    bksy_client.send_post(sentence)
+    bksy_client.send_post(f"tRumP bot says: {sentence}")
 
 
 if __name__ == "__main__":
