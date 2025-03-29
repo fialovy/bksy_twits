@@ -1,10 +1,9 @@
 import os
-
 import markovify
 from atproto import Client
 
 from utils import (MARKOVIFY_MAX_TRIES, MARKOVIFY_STATE_SIZE,
-                   TWEET_COMPILER_CLASSES)
+                   TWEET_COMPILER_CLASSES, get_villain_quotes_list)
 
 
 def main():
@@ -24,10 +23,20 @@ def main():
         tc = tcc(bksy_client)
         full_tweets_list.extend(tc.get_all_tweets())
 
-    # TODO: filter similar list items that are really just the same screenshot
-    corpus = " ".join(full_tweets_list)
+    # TODO: possibly filter similar list items that are really just the same screenshot
+    # Buuuut, I believe markovify ignores repeated stuff anyway, so ¯\_(ツ)_/¯
+    villain_quotes_list = get_villain_quotes_list()
+    corpus = create_combined_corpus(full_tweets_list, villain_quotes_list)
+
     markovifier = markovify.Text(corpus, state_size=MARKOVIFY_STATE_SIZE)
-    sentence = markovifier.make_sentence(tries=MARKOVIFY_MAX_TRIES)
+    satisfied = False
+    while not satisfied:
+        sentence = markovifier.make_sentence(tries=MARKOVIFY_MAX_TRIES)
+        decision = input(f"Post this quote? : {sentence} (Y to post / N to try again)")
+        if decision.lower() in ["y", "yes"]:
+            satisfied = True
+
+    # POST IT:
 
 
 if __name__ == "__main__":

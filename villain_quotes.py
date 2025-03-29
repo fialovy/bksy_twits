@@ -1,4 +1,3 @@
-# I don't need the keys, but I wanna be transparent :)
 VILLAIN_QUOTES = {
     "evil_queen": [
         "Mirror, mirror on the wall, who is the fairest of them all?",

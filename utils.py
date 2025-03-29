@@ -1,3 +1,4 @@
+import random
 import re
 from itertools import chain
 from typing import Any, Callable, NamedTuple, Optional, Union
@@ -8,6 +9,8 @@ from atproto_client.models import AppBskyFeedSearchPosts
 from dateutil.parser import ParserError
 from dateutil.parser import parse as attempt_to_parse_date
 from easyocr import Reader as ImageReader
+
+from villain_quotes import VILLAIN_QUOTES
 
 REPLIES = "replies"
 RETWEETS = "retweets"
@@ -22,6 +25,8 @@ OTHER_REGEXES_TO_CLEAN = frozenset(
     ]
 )
 
+
+DEFAULT_VILLAIN_QUOTES_COUNT = 5
 MARKOVIFY_STATE_SIZE = (
     2  # this is the default and sadly any more isn't giving me anything yet
 )
@@ -407,3 +412,19 @@ class TrumpTweetCompiler(TweetCompiler):
 TWEET_COMPILER_CLASSES = [
     TrumpTweetCompiler,
 ]
+
+
+def get_villain_quotes_list(count: int = DEFAULT_VILLAIN_QUOTES_COUNT) -> list[str]:
+    # The dict keys were just for reference in case anyone was curious :P
+    all_quotes = [quote for quotes in VILLAIN_QUOTES.values() for quote in quotes]
+    return random.sample(all_quotes, DEFAULT_VILLAIN_QUOTES_COUNT)
+
+
+def create_combined_corpus(
+    full_tweets_list: list[str], villain_quotes_list: list[str]
+) -> str:
+    """
+    Intersperse villain quotes at random places in tweets list then combine into
+    single string corpus
+    """
+    raise NotImplementedError
