@@ -43,6 +43,7 @@ class ExpectedPostCharacteristicInfo(NamedTuple):
 
 
 class TweetCompiler:
+    nickname = "bot"
     max_pages: int = 100
     # Within how many positions in the list of extracted image texts we expect to
     # see a desired piece of text (e.g., person's handle or like count)
@@ -398,6 +399,7 @@ class TweetCompiler:
 
 
 class TrumpTweetCompiler(TweetCompiler):
+    nickname = "tRumP bot"
     hashtags = [
         "TrumpTweets",
         "TrumpTweet",
@@ -413,6 +415,7 @@ class TrumpTweetCompiler(TweetCompiler):
 
 
 class MuskTweetCompiler(TweetCompiler):
+    nickname = "mUsK bot"
     hashtags = [
         "MuskTweets",
         "ElonMuskTweets",
@@ -422,10 +425,12 @@ class MuskTweetCompiler(TweetCompiler):
     twix_user_handle = "@elonmusk"
 
 
-TWEET_COMPILER_CLASSES = [
-    #MuskTweetCompiler,
-    TrumpTweetCompiler,
-]
+TWEET_COMPILER_CLASSES = frozenset(
+    [
+        # MuskTweetCompiler,
+        TrumpTweetCompiler,
+    ]
+)
 
 
 def dedupe_combined_tweets_list(combined_tweets_list: list[str]) -> list[str]:
@@ -484,3 +489,14 @@ def create_combined_corpus(
         full_tweets_list.insert(index_to_insert_at, quote)
 
     return " ".join(full_tweets_list)
+
+
+def format_tweet_compiler_nicknames() -> str:
+    tweet_compiler_classes = list(TWEET_COMPILER_CLASSES)
+
+    if len(tweet_compiler_classes) == 1:
+        return tweet_compiler_classes[0].nickname
+    if len(tweet_compiler_classes) == 2:
+        return f"{tweet_compiler_classes[0].nickname} and {tweet_compiler_classes[1].nickname}"
+    all_but_last = '{", ".join(tcc.nickname for tcc in tweet_compiler_classes[:-1])}'
+    return f"{all_but_last}, and {tweet_compiler_classes[-1].nickname}"
