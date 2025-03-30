@@ -26,7 +26,6 @@ OTHER_REGEXES_TO_CLEAN = frozenset(
     ]
 )
 
-MY_DUMB_INFINITE_LOOP_PREVENTER = 1000
 QUOTE_INSERTION_WINDOW_SIZE = 5
 TWEET_DEDUPE_FUZZY_MATCH_THRESHOLD = 80
 
@@ -455,6 +454,10 @@ def get_villain_quotes_list(max_count: int) -> list[str]:
     all_quotes = [quote for quotes in VILLAIN_QUOTES.values() for quote in quotes]
     return random.sample(all_quotes, min([len(all_quotes), max_count]))
 
+
+# I figured this variable would make a terrible first impression on repo
+# viewers if I put it at the very top :)
+MY_DUMB_INFINITE_LOOP_PREVENTER = 1000
 
 def create_combined_corpus(
     full_tweets_list: list[str], villain_quotes_list: list[str]
