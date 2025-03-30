@@ -46,7 +46,7 @@ def main():
         if decision.lower() in ["y", "yes"]:
             satisfied = True
 
-    bksy_client.send_post(f"mUsK bot says: {sentence}")
+    bksy_client.send_post(f"tRumP bot says: {sentence}")
 
 
 if __name__ == "__main__":
