@@ -57,10 +57,10 @@ class TweetCompiler:
     hashtags: list[str]
     accounts: list[str]
     # What we expect to see on a twitter/X or untruth social screenshot, respectively
-    twix_user_full_name: Optional[str]
-    twix_user_handle: Optional[str]
-    untruth_social_user_full_name: Optional[str]
-    untruth_social_user_handle: Optional[str]
+    twix_user_full_name: Optional[str] = None
+    twix_user_handle: Optional[str] = None
+    untruth_social_user_full_name: Optional[str] = None
+    untruth_social_user_handle: Optional[str] = None
 
     def __init__(self, bksy_client: Client):
         self.client = bksy_client
@@ -307,7 +307,7 @@ class TweetCompiler:
                         continue
 
             for other_regex in OTHER_REGEXES_TO_CLEAN:
-                re.sub(other_regex, "", text)
+                text = re.sub(other_regex, "", text)
 
             if text:
                 cleaned_texts.append(text)
@@ -412,7 +412,18 @@ class TrumpTweetCompiler(TweetCompiler):
     untruth_social_user_handle = "@realDonaldTrump"
 
 
+class MuskTweetCompiler(TweetCompiler):
+    hashtags = [
+        "MuskTweets",
+        "ElonMuskTweets",
+    ]
+    accounts = []
+    twix_user_full_name = "Elon Musk"
+    twix_user_handle = "@elonmusk"
+
+
 TWEET_COMPILER_CLASSES = [
+    #MuskTweetCompiler,
     TrumpTweetCompiler,
 ]
 
