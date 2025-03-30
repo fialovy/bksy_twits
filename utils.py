@@ -337,11 +337,11 @@ class TweetCompiler:
         response = getter_func(*getter_args, **getter_kwargs)
         feed_response = getattr(response, "feed", None)
         posts_response = getattr(response, "posts", None)
-        if feed_response:
+        if feed_response is not None:
             items = feed_response
             post_attr = "post"
             cursor_in_params = False
-        elif posts_response:
+        elif posts_response is not None:
             items = posts_response
             # each thing we itereate is already a post
             # I want to use None but it makes mypy yell so something here, have
@@ -419,6 +419,9 @@ class MuskTweetCompiler(TweetCompiler):
     hashtags = [
         "MuskTweets",
         "ElonMuskTweets",
+        "elonmusk",
+        "muskrat",
+        "justnoelon",
     ]
     accounts = []
     twix_user_full_name = "Elon Musk"
@@ -427,7 +430,7 @@ class MuskTweetCompiler(TweetCompiler):
 
 TWEET_COMPILER_CLASSES = frozenset(
     [
-        # MuskTweetCompiler,
+        #MuskTweetCompiler,
         TrumpTweetCompiler,
     ]
 )

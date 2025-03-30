@@ -3,20 +3,24 @@ import os
 import markovify
 from atproto import Client
 
-from utils import (MARKOVIFY_MAX_TRIES, MARKOVIFY_STATE_SIZE,
-                   TWEET_COMPILER_CLASSES, create_combined_corpus,
-                   dedupe_combined_tweets_list,
-                   format_tweet_compiler_nicknames, get_villain_quotes_list)
+from utils import (
+    MARKOVIFY_MAX_TRIES,
+    MARKOVIFY_STATE_SIZE,
+    TWEET_COMPILER_CLASSES,
+    create_combined_corpus,
+    dedupe_combined_tweets_list,
+    format_tweet_compiler_nicknames,
+    get_villain_quotes_list,
+)
 
 
 def main():
     bksy_username = os.environ.get("BKSY_USERNAME")
     bksy_app_password = os.environ.get("BKSY_APP_PW")
     if not bksy_username or not bksy_app_password:
-        print(
+        raise ValueError(
             "Bluesky login credentials not found among environment variables; cannot proceed."
         )
-        exit(1)
 
     bksy_client = Client()
     bksy_client.login(bksy_username, bksy_app_password)
