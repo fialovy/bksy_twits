@@ -402,9 +402,9 @@ class TrumpTweetCompiler(TweetCompiler):
     hashtags = [
         "TrumpTweets",
         "TrumpTweet",
-        "trumptweets",
-        "trumptweet",
         "TheresAlwaysATweet",
+        "donaldtrump",
+        "trump",
     ]
     accounts = ["trumptweets.bsky.social", "trumpwatch.skyfleet.blue"]
     twix_user_full_name = "Donald J. Trump"
@@ -429,7 +429,7 @@ class MuskTweetCompiler(TweetCompiler):
 
 TWEET_COMPILER_CLASSES = frozenset(
     [
-        #MuskTweetCompiler,
+        # MuskTweetCompiler,
         TrumpTweetCompiler,
     ]
 )
@@ -458,6 +458,7 @@ def get_villain_quotes_list(max_count: int) -> list[str]:
 # I figured this variable would make a terrible first impression on repo
 # viewers if I put it at the very top :)
 MY_DUMB_INFINITE_LOOP_PREVENTER = 1000
+
 
 def create_combined_corpus(
     full_tweets_list: list[str], villain_quotes_list: list[str]
