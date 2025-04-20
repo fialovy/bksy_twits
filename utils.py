@@ -416,10 +416,8 @@ class TrumpTweetCompiler(TweetCompiler):
 class MuskTweetCompiler(TweetCompiler):
     nickname = "mUsK bot"
     hashtags = [
-        "MuskTweets",
         "ElonMuskTweets",
         "elonmusk",
-        "muskrat",
         "justnoelon",
     ]
     accounts = []
@@ -427,10 +425,23 @@ class MuskTweetCompiler(TweetCompiler):
     twix_user_handle = "@elonmusk"
 
 
+class RowlingTweetCompiler(TweetCompiler):
+    nickname = "mX. jOaN rowLinG bot"
+    hashtags = [
+        "JKRowlingTweets",
+        "jkrowling",
+        "joanrowling",
+    ]
+    accounts = []
+    twix_user_full_name = "J.K. Rowling"
+    twix_user_handle = "@jk_rowling"
+
+
 TWEET_COMPILER_CLASSES = frozenset(
     [
         # MuskTweetCompiler,
         TrumpTweetCompiler,
+        # RowlingTweetCompiler,
     ]
 )
 

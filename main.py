@@ -3,15 +3,10 @@ import os
 import markovify
 from atproto import Client
 
-from utils import (
-    MARKOVIFY_MAX_TRIES,
-    MARKOVIFY_STATE_SIZE,
-    TWEET_COMPILER_CLASSES,
-    create_combined_corpus,
-    dedupe_combined_tweets_list,
-    format_tweet_compiler_nicknames,
-    get_villain_quotes_list,
-)
+from utils import (MARKOVIFY_MAX_TRIES, MARKOVIFY_STATE_SIZE,
+                   TWEET_COMPILER_CLASSES, create_combined_corpus,
+                   dedupe_combined_tweets_list,
+                   format_tweet_compiler_nicknames, get_villain_quotes_list)
 
 
 def main():
@@ -29,6 +24,11 @@ def main():
     for tcc in TWEET_COMPILER_CLASSES:
         tc = tcc(bksy_client)
         full_tweets_list.extend(tc.get_all_tweets())
+
+    if not full_tweets_list:
+        raise ValueError(
+            f"Couldn't find enough social media posts for {format_tweet_compiler_nicknames()}; cannot generate anything!"
+        )
 
     full_tweets_list = dedupe_combined_tweets_list(full_tweets_list)
 
