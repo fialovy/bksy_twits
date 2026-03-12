@@ -2,6 +2,8 @@ import os
 
 import markovify
 from atproto import Client
+from atproto_client.request import Request
+from httpx import Timeout
 
 from utils import (MARKOVIFY_MAX_TRIES, MARKOVIFY_STATE_SIZE,
                    TWEET_COMPILER_CLASSES, create_combined_corpus,
@@ -17,7 +19,11 @@ def main():
             "Bluesky login credentials not found among environment variables; cannot proceed."
         )
 
-    bksy_client = Client()
+    # increase default timeout for atproto library via underlying request
+    # yes you have to do it this way :P
+    request = Request()
+    request._client.timeout=Timeout(timeout=20.0)
+    bksy_client = Client(request=request)
     bksy_client.login(bksy_username, bksy_app_password)
 
     full_tweets_list = []
