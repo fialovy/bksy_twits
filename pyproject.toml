@@ -13,5 +13,6 @@ dependencies = [
     "markovify>=0.9.4",
     "mypy>=1.15.0",
     "python-dateutil>=2.9.0.post0",
+    "python-levenshtein>=0.27.3",
     "types-python-dateutil>=2.9.0.20241206",
 ]
